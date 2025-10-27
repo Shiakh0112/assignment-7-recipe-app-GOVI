@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 import SearchBar from "./SearchBar";
 import Filter from "./Filter";
 import RecipeCard from "./RecipeCard";
@@ -12,6 +13,9 @@ const Recipes = () => {
   const [selectedIngredient, setSelectedIngredient] = useState("");
   const [selectedMealType, setSelectedMealType] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const recipesPerPage = 8; // 👈 show 8 recipes per page
 
   // 🔹 Fetch categories
   useEffect(() => {
@@ -44,7 +48,8 @@ const Recipes = () => {
         }
 
         const res = await axios.get(url);
-        setMeals(res.data.meals);
+        setMeals(res.data.meals || []);
+        setCurrentPage(1); // reset to page 1 on filter change
       } catch (error) {
         console.error("Error fetching meals:", error);
       }
@@ -57,8 +62,24 @@ const Recipes = () => {
     meal.strMeal.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // 🧮 Pagination logic
+  const totalPages = Math.ceil(filteredMeals?.length / recipesPerPage);
+  const startIndex = (currentPage - 1) * recipesPerPage;
+  const currentMeals = filteredMeals?.slice(
+    startIndex,
+    startIndex + recipesPerPage
+  );
+
+  // ✨ Animation for smooth transitions
+  const pageVariants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+    exit: { opacity: 0, y: -40, transition: { duration: 0.3 } },
+  };
+
   return (
     <div className="mt-16">
+      {/* 🔹 Search & Filter */}
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <Filter
         categories={categories}
@@ -70,11 +91,71 @@ const Recipes = () => {
         selectedMealType={selectedMealType}
         setSelectedMealType={setSelectedMealType}
       />
-      <div className="grid w-[90%] grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 m-auto justify-center items-center gap-5">
-        {filteredMeals?.map((meal) => (
-          <RecipeCard key={meal.idMeal} meal={meal} />
-        ))}
+
+      {/* 🔹 Recipe Grid with Animation */}
+      <div className="w-[90%] mx-auto mt-10">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPage}
+            variants={pageVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+          >
+            {currentMeals?.map((meal, index) => (
+              <RecipeCard key={meal.idMeal} meal={meal} index={index} />
+            ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
+
+      {/* 🔹 Pagination Buttons */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-10 gap-3">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className={`px-4 py-2 rounded-md border text-sm font-medium transition ${
+              currentPage === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white hover:bg-amber-100 border-amber-400 text-amber-600"
+            }`}
+          >
+            ← Prev
+          </button>
+
+          {/* Page Numbers */}
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => {
+                setCurrentPage(i + 1);
+                window.scrollTo({ top: 0, behavior: "smooth" }); // scroll up
+              }}
+              className={`px-4 py-2 rounded-md border text-sm font-medium transition ${
+                currentPage === i + 1
+                  ? "bg-amber-500 text-white border-amber-600"
+                  : "bg-white hover:bg-amber-100 border-gray-300 text-gray-700"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className={`px-4 py-2 rounded-md border text-sm font-medium transition ${
+              currentPage === totalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white hover:bg-amber-100 border-amber-400 text-amber-600"
+            }`}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 };

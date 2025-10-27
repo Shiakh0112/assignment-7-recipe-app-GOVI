@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 const Filter = ({
   categories,
@@ -22,23 +23,46 @@ const Filter = ({
     scrollRef.current.scrollBy({ left: 250, behavior: "smooth" });
   };
 
+  // 🎬 Animation variants
+  const sectionVariant = {
+    hidden: { opacity: 0, y: 40 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6, ease: "easeOut" },
+    },
+  };
+
+  const cardVariant = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: (i) => ({
+      opacity: 1,
+      scale: 1,
+      transition: { delay: i * 0.05, duration: 0.3 },
+    }),
+  };
+
   return (
-    <div className="w-[90%] mx-auto  mb-10 flex flex-col gap-10">
+    <motion.div
+      className="w-[90%] mx-auto mb-10 flex flex-col gap-10"
+      initial="hidden"
+      animate="visible"
+    >
       {/* 🔹 Category Filter */}
-      <div className="relative">
-        <h2 className="text-xl font-semibold mt-20 h-20 text-gray-700 text-center">
+      <motion.div variants={sectionVariant}>
+        <h2 className="text-xl font-semibold mt-20 text-gray-700 text-center">
           Filter by Category 🍱
         </h2>
 
-        {/* 🧭 Scrollable Category Slider */}
         <div className="relative">
           {/* 👈 Left Arrow */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={scrollLeft}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-amber-500/90 hover:bg-amber-600 text-white w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full shadow-lg hover:scale-110 transition-all duration-300"
           >
             <FaChevronLeft className="text-lg md:text-xl" />
-          </button>
+          </motion.button>
 
           {/* Category Slider */}
           <div
@@ -46,13 +70,16 @@ const Filter = ({
             className="flex overflow-x-auto gap-6 px-12 py-3 scroll-smooth no-scrollbar h-40 snap-x snap-mandatory"
           >
             {/* All Option */}
-            <div
+            <motion.div
+              custom={0}
+              variants={cardVariant}
               onClick={() => setSelectedCategory("")}
               className={`cursor-pointer min-w-[100px] flex flex-col items-center justify-center rounded-xl shadow-md transition-transform duration-300 snap-center ${
                 selectedCategory === ""
                   ? "bg-amber-100 border-2 border-amber-500 scale-110"
                   : "bg-white border border-gray-200 hover:border-amber-400"
               }`}
+              whileHover={{ scale: 1.1 }}
             >
               <span className="text-2xl">🍽️</span>
               <p
@@ -62,12 +89,15 @@ const Filter = ({
               >
                 All
               </p>
-            </div>
+            </motion.div>
 
             {/* Dynamic Categories */}
-            {categories.map((cat) => (
-              <div
+            {categories.map((cat, i) => (
+              <motion.div
                 key={cat.idCategory}
+                custom={i + 1}
+                variants={cardVariant}
+                whileHover={{ scale: 1.1 }}
                 onClick={() => setSelectedCategory(cat.strCategory)}
                 className={`cursor-pointer min-w-[100px] flex flex-col items-center justify-center rounded-xl shadow-md transition-transform duration-300 snap-center ${
                   selectedCategory === cat.strCategory
@@ -83,26 +113,31 @@ const Filter = ({
                 <p className="mt-2 text-xs text-center font-medium text-gray-700">
                   {cat.strCategory}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
 
           {/* 👉 Right Arrow */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={scrollRight}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-amber-500/90 hover:bg-amber-600 text-white w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full shadow-lg hover:scale-110 transition-all duration-300"
           >
             <FaChevronRight className="text-lg md:text-xl" />
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* 🔹 Ingredient Filter */}
-      <div>
+      <motion.div variants={sectionVariant}>
         <h2 className="text-xl font-semibold mb-4 text-gray-700 text-center">
           Filter by Ingredient 🧂
         </h2>
-        <div className="flex justify-center">
+        <motion.div
+          className="flex justify-center"
+          whileHover={{ scale: 1.02 }}
+          transition={{ duration: 0.3 }}
+        >
           <select
             value={selectedIngredient}
             onChange={(e) => setSelectedIngredient(e.target.value)}
@@ -115,18 +150,22 @@ const Filter = ({
               </option>
             ))}
           </select>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* 🔹 Meal Type Filter */}
-      <div>
+      <motion.div variants={sectionVariant}>
         <h2 className="text-xl font-semibold mb-4 text-gray-700 text-center">
           Filter by Meal Type 🍳
         </h2>
         <div className="flex flex-wrap gap-4 justify-center">
-          {mealTypes.map((type) => (
-            <button
+          {mealTypes.map((type, i) => (
+            <motion.button
               key={type}
+              custom={i}
+              variants={cardVariant}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() =>
                 setSelectedMealType(selectedMealType === type ? "" : type)
               }
@@ -137,11 +176,11 @@ const Filter = ({
               }`}
             >
               {type}
-            </button>
+            </motion.button>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
