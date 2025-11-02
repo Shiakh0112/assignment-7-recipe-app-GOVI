@@ -9,31 +9,27 @@ const Recipes = () => {
   const [categories, setCategories] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [meals, setMeals] = useState([]);
+  const [filteredMeals, setFilteredMeals] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedIngredient, setSelectedIngredient] = useState("");
   const [selectedMealType, setSelectedMealType] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const recipesPerPage = 8; // 👈 show 8 recipes per page
+  const recipesPerPage = 8;
 
-  // 🔹 Fetch categories
+  // 🔹 Fetch categories & ingredients
   useEffect(() => {
     axios
       .get("https://www.themealdb.com/api/json/v1/1/categories.php")
-      .then((res) => setCategories(res.data.categories))
-      .catch((err) => console.error("Error fetching categories:", err));
-  }, []);
+      .then((res) => setCategories(res.data.categories || []));
 
-  // 🔹 Fetch ingredients list (limited for simplicity)
-  useEffect(() => {
     axios
       .get("https://www.themealdb.com/api/json/v1/1/list.php?i=list")
-      .then((res) => setIngredients(res.data.meals.slice(0, 20))) // just 20 for short list
-      .catch((err) => console.error("Error fetching ingredients:", err));
+      .then((res) => setIngredients(res.data.meals.slice(0, 25) || []));
   }, []);
 
-  // 🔹 Fetch meals dynamically based on filters
+  // 🔹 Fetch meals based on filters
   useEffect(() => {
     const fetchMeals = async () => {
       try {
@@ -43,43 +39,55 @@ const Recipes = () => {
           url = `https://www.themealdb.com/api/json/v1/1/filter.php?c=${selectedCategory}`;
         } else if (selectedIngredient) {
           url = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${selectedIngredient}`;
-        } else if (selectedMealType) {
-          url = `https://www.themealdb.com/api/json/v1/1/filter.php?a=${selectedMealType}`;
         }
 
         const res = await axios.get(url);
-        setMeals(res.data.meals || []);
-        setCurrentPage(1); // reset to page 1 on filter change
+        let allMeals = res.data.meals || [];
+
+        // ✅ Manual Meal Type Filtering (Working logic)
+        if (selectedMealType) {
+          const type = selectedMealType.toLowerCase();
+          const keywords = {
+            breakfast: ["bread", "egg", "toast", "pancake", "cereal"],
+            lunch: ["salad", "sandwich", "rice", "wrap", "soup"],
+            dinner: ["chicken", "beef", "steak", "pasta", "curry"],
+            dessert: ["apam", "pie", "pudding", "chocolate", "ice"],
+          };
+
+          allMeals = allMeals.filter((meal) =>
+            keywords[type].some((word) =>
+              meal.strMeal.toLowerCase().includes(word)
+            )
+          );
+        }
+
+        setMeals(allMeals);
+        setCurrentPage(1);
       } catch (error) {
         console.error("Error fetching meals:", error);
       }
     };
+
     fetchMeals();
   }, [selectedCategory, selectedIngredient, selectedMealType]);
 
-  // 🔹 Filter by search term
-  const filteredMeals = meals?.filter((meal) =>
-    meal.strMeal.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 🔹 Combine search + filters
+  useEffect(() => {
+    const results = meals.filter((meal) =>
+      meal.strMeal.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredMeals(results);
+  }, [searchTerm, meals]);
 
-  // 🧮 Pagination logic
-  const totalPages = Math.ceil(filteredMeals?.length / recipesPerPage);
-  const startIndex = (currentPage - 1) * recipesPerPage;
-  const currentMeals = filteredMeals?.slice(
-    startIndex,
-    startIndex + recipesPerPage
+  // 🔹 Pagination
+  const totalPages = Math.ceil(filteredMeals.length / recipesPerPage);
+  const currentMeals = filteredMeals.slice(
+    (currentPage - 1) * recipesPerPage,
+    currentPage * recipesPerPage
   );
-
-  // ✨ Animation for smooth transitions
-  const pageVariants = {
-    hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-    exit: { opacity: 0, y: -40, transition: { duration: 0.3 } },
-  };
 
   return (
     <div className="mt-16">
-      {/* 🔹 Search & Filter */}
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <Filter
         categories={categories}
@@ -92,31 +100,37 @@ const Recipes = () => {
         setSelectedMealType={setSelectedMealType}
       />
 
-      {/* 🔹 Recipe Grid with Animation */}
+      {/* 🔹 Recipes Grid */}
       <div className="w-[90%] mx-auto mt-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentPage}
-            variants={pageVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -40 }}
+            transition={{ duration: 0.4 }}
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
           >
-            {currentMeals?.map((meal, index) => (
-              <RecipeCard key={meal.idMeal} meal={meal} index={index} />
-            ))}
+            {currentMeals.length > 0 ? (
+              currentMeals.map((meal, index) => (
+                <RecipeCard key={meal.idMeal} meal={meal} index={index} />
+              ))
+            ) : (
+              <p className="col-span-full text-center text-gray-600 text-lg">
+                No recipes found 🍳
+              </p>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* 🔹 Pagination Buttons */}
+      {/* 🔹 Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-10 gap-3">
           <button
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => p - 1)}
-            className={`px-4 py-2 rounded-md border text-sm font-medium transition ${
+            className={`px-4 py-2 rounded-md border text-sm font-medium ${
               currentPage === 1
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                 : "bg-white hover:bg-amber-100 border-amber-400 text-amber-600"
@@ -125,15 +139,11 @@ const Recipes = () => {
             ← Prev
           </button>
 
-          {/* Page Numbers */}
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i + 1}
-              onClick={() => {
-                setCurrentPage(i + 1);
-                window.scrollTo({ top: 0, behavior: "smooth" }); // scroll up
-              }}
-              className={`px-4 py-2 rounded-md border text-sm font-medium transition ${
+              onClick={() => setCurrentPage(i + 1)}
+              className={`px-4 py-2 rounded-md border text-sm font-medium ${
                 currentPage === i + 1
                   ? "bg-amber-500 text-white border-amber-600"
                   : "bg-white hover:bg-amber-100 border-gray-300 text-gray-700"
@@ -146,7 +156,7 @@ const Recipes = () => {
           <button
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage((p) => p + 1)}
-            className={`px-4 py-2 rounded-md border text-sm font-medium transition ${
+            className={`px-4 py-2 rounded-md border text-sm font-medium ${
               currentPage === totalPages
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                 : "bg-white hover:bg-amber-100 border-amber-400 text-amber-600"

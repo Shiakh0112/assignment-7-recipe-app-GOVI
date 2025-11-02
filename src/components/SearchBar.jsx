@@ -38,9 +38,6 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-2 py-2 text-gray-700 border-none outline-none focus:ring-0"
           />
-          <button className="ml-3 bg-green-500 hover:bg-green-600 active:scale-95 text-white px-5 py-2 rounded-xl transition-all duration-300 font-semibold shadow-md">
-            Search
-          </button>
         </div>
       </motion.div>
     </div>
