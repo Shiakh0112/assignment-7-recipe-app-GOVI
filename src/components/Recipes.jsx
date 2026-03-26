@@ -8,7 +8,6 @@ import RecipeCard from "./RecipeCard";
 const Recipes = () => {
   const [categories, setCategories] = useState([]);
   const [ingredients, setIngredients] = useState([]);
-  const [meals, setMeals] = useState([]);
   const [filteredMeals, setFilteredMeals] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedIngredient, setSelectedIngredient] = useState("");
@@ -23,29 +22,42 @@ const Recipes = () => {
     axios
       .get("https://www.themealdb.com/api/json/v1/1/categories.php")
       .then((res) => setCategories(res.data.categories || []));
-
     axios
       .get("https://www.themealdb.com/api/json/v1/1/list.php?i=list")
       .then((res) => setIngredients(res.data.meals.slice(0, 25) || []));
   }, []);
 
-  // 🔹 Fetch meals based on filters
+  // 🔹 Fetch meals based on search OR filters
   useEffect(() => {
     const fetchMeals = async () => {
       try {
-        let url = "https://www.themealdb.com/api/json/v1/1/search.php?s=";
+        let allMeals = [];
 
-        if (selectedCategory) {
-          url = `https://www.themealdb.com/api/json/v1/1/filter.php?c=${selectedCategory}`;
+        if (searchTerm.trim()) {
+          // Search API se directly fetch karo
+          const res = await axios.get(
+            `https://www.themealdb.com/api/json/v1/1/search.php?s=${searchTerm.trim()}`
+          );
+          allMeals = res.data.meals || [];
+        } else if (selectedCategory && selectedIngredient) {
+          const [catRes, ingRes] = await Promise.all([
+            axios.get(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${selectedCategory}`),
+            axios.get(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${selectedIngredient}`),
+          ]);
+          const ingIds = new Set((ingRes.data.meals || []).map((m) => m.idMeal));
+          allMeals = (catRes.data.meals || []).filter((m) => ingIds.has(m.idMeal));
+        } else if (selectedCategory) {
+          const res = await axios.get(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${selectedCategory}`);
+          allMeals = res.data.meals || [];
         } else if (selectedIngredient) {
-          url = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${selectedIngredient}`;
+          const res = await axios.get(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${selectedIngredient}`);
+          allMeals = res.data.meals || [];
+        } else {
+          const res = await axios.get("https://www.themealdb.com/api/json/v1/1/search.php?s=");
+          allMeals = res.data.meals || [];
         }
 
-        const res = await axios.get(url);
-        let allMeals = res.data.meals || [];
-
-        // ✅ Manual Meal Type Filtering (Working logic)
-        if (selectedMealType) {
+        if (selectedMealType && !searchTerm.trim()) {
           const type = selectedMealType.toLowerCase();
           const keywords = {
             breakfast: ["bread", "egg", "toast", "pancake", "cereal"],
@@ -53,31 +65,21 @@ const Recipes = () => {
             dinner: ["chicken", "beef", "steak", "pasta", "curry"],
             dessert: ["apam", "pie", "pudding", "chocolate", "ice"],
           };
-
           allMeals = allMeals.filter((meal) =>
-            keywords[type].some((word) =>
-              meal.strMeal.toLowerCase().includes(word)
-            )
+            keywords[type]?.some((word) => meal.strMeal.toLowerCase().includes(word))
           );
         }
 
-        setMeals(allMeals);
+        setFilteredMeals(allMeals);
         setCurrentPage(1);
       } catch (error) {
         console.error("Error fetching meals:", error);
       }
     };
 
-    fetchMeals();
-  }, [selectedCategory, selectedIngredient, selectedMealType]);
-
-  // 🔹 Combine search + filters
-  useEffect(() => {
-    const results = meals.filter((meal) =>
-      meal.strMeal.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredMeals(results);
-  }, [searchTerm, meals]);
+    const debounce = setTimeout(fetchMeals, 400);
+    return () => clearTimeout(debounce);
+  }, [searchTerm, selectedCategory, selectedIngredient, selectedMealType]);
 
   // 🔹 Pagination
   const totalPages = Math.ceil(filteredMeals.length / recipesPerPage);

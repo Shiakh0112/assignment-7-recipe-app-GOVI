@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import Signup from "./../pages/Signup";
 
 const RecipeContext = createContext();
 
@@ -10,13 +9,11 @@ export const RecipeProvider = ({ children }) => {
       const parsed = saved ? JSON.parse(saved) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
-      console.error("Error parsing favorites from localStorage:", error);
-      localStorage.removeItem("favorites"); // clear corrupted data
+      localStorage.removeItem("favorites");
       return [];
     }
   });
 
-  // 🔹 User Auth
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
@@ -25,17 +22,14 @@ export const RecipeProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
+
   useEffect(() => {
     if (user) localStorage.setItem("user", JSON.stringify(user));
     else localStorage.removeItem("user");
   }, [user]);
-  const addToFavorites = (recipe) => {
-    if (!user)
-      return {
-        success: false,
-        message: "You must be logged in to add favorites",
-      };
 
+  const addToFavorites = (recipe) => {
+    if (!user) return { success: false, message: "You must be logged in to add favorites" };
     if (!favorites.some((r) => r.idMeal === recipe.idMeal)) {
       setFavorites((prev) => [...prev, recipe]);
     }
@@ -45,23 +39,21 @@ export const RecipeProvider = ({ children }) => {
   const removeFromFavorites = (id) => {
     setFavorites((prev) => prev.filter((r) => r.idMeal !== id));
   };
-  // 🔹 Auth Functions
+
   const signup = (email, password) => {
     const users = JSON.parse(localStorage.getItem("users")) || [];
     const exists = users.find((u) => u.email === email);
     if (exists) return { success: false, message: "User already exists" };
-
     const newUser = { email, password };
     localStorage.setItem("users", JSON.stringify([...users, newUser]));
     localStorage.setItem("user", JSON.stringify(newUser));
     setUser(newUser);
     return { success: true };
   };
+
   const login = (email, password) => {
     const users = JSON.parse(localStorage.getItem("users")) || [];
-    const found = users.find(
-      (u) => u.email === email && u.password === password
-    );
+    const found = users.find((u) => u.email === email && u.password === password);
     if (found) {
       localStorage.setItem("user", JSON.stringify(found));
       setUser(found);
@@ -74,6 +66,16 @@ export const RecipeProvider = ({ children }) => {
     localStorage.removeItem("user");
     setUser(null);
   };
+
+  const resetPassword = (email, newPassword) => {
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    const index = users.findIndex((u) => u.email === email);
+    if (index === -1) return { success: false, message: "Email not found" };
+    users[index].password = newPassword;
+    localStorage.setItem("users", JSON.stringify(users));
+    return { success: true };
+  };
+
   return (
     <RecipeContext.Provider
       value={{
@@ -84,6 +86,7 @@ export const RecipeProvider = ({ children }) => {
         signup,
         login,
         logout,
+        resetPassword,
       }}
     >
       {children}

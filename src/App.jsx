@@ -1,7 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-// import Recip es from "./pages/Recipes";
 import About from "./pages/About";
 import Favorites from "./pages/Favorites";
 import Login from "./pages/Login";
@@ -10,6 +9,7 @@ import Footer from "./components/Footer";
 import Contact from "./pages/Contact";
 import RecipeDetails from "./pages/RecipeDetails";
 import RequireAuth from "./components/RequireAuth";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const App = () => {
   return (
@@ -28,13 +28,15 @@ const App = () => {
               </RequireAuth>
             }
           />
-          <Route path="/recipes/:idMeal" element={<RecipeDetails />} />{" "}
+          <Route path="/recipes/:idMeal" element={<RecipeDetails />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Routes>
       </div>
       <Footer />
     </div>
   );
 };
+
 export default App;
